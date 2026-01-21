@@ -10,7 +10,7 @@ cd pythia
 ```
 ## Usage
 ```python
-import MonoGlyph
+import monoglyph
 
 mg = MonoGlyph(width=80, height=24)
 mg.set_rotation(45, origin_x=40, origin_y=12)
