@@ -1,9 +1,8 @@
-import os
 import sys
 import math
 
 
-class MonoGlýph:
+class MonoGlyph:
     SHADE_CHARS = ".:-=+*#%@"
 
 
@@ -22,7 +21,7 @@ class MonoGlýph:
         | |  | | (_) | | | | (_) | |_| | | |_| | |_)|| | | |
         |_|  |_|\___/|_| |_|\___/ \____|_|\__, | .__/|_| |_|
                                           |___/|_|
-        """ # Logo is for demos/examples; not needed in actual games.
+        """ # Logo is for demos/examples; not needed in actual uses
 
 
     def set_rotation(self, degrees: float, origin_x: int = 0, origin_y: int = 0):
@@ -33,7 +32,7 @@ class MonoGlýph:
 
 
     def get_shade(self, intensity: float) -> str:
-        """Maps an intensity (0.0 to 1.0) to a shaded character."""
+        """Maps 0.0 to 1.0 to a shaded character."""
         clamped = max(0.0, min(1.0, intensity))
         if clamped <= 0.0:
            return self.default_char
@@ -59,24 +58,19 @@ class MonoGlýph:
         if self.current_angle == 0:
             return round(x), round(y)
 
-
         # Translate to local space (relative to pivot)
         temp_x = x - self.origin_x
         temp_y = y - self.origin_y
-
 
         # 2D Rotation Matrix
         cos_a = math.cos(self.current_angle)
         sin_a = math.sin(self.current_angle)
 
-
         rotated_x = temp_x * cos_a - temp_y * sin_a
         rotated_y = temp_x * sin_a + temp_y * cos_a
 
-
         # Translate back to world space and round to integer
         return round(rotated_x + self.origin_x), round(rotated_y + self.origin_y)
-
 
     def set_pixel(self, x: int, y: int, char: str, r: int = None, g: int = None, b: int = None):
         """Rotates a single pixel."""
@@ -140,7 +134,7 @@ class MonoGlýph:
         d = 3 - 2 * radius
 
 
-        def plot_circle_points(cx, cy, x, y, char, r, g, b):
+        def _plot_circle_points(cx, cy, x, y, char, r, g, b):
             self._plot(cx + x, cy + y, char, r, g, b)
             self._plot(cx - x, cy + y, char, r, g, b)
             self._plot(cx + x, cy - y, char, r, g, b)
@@ -151,7 +145,7 @@ class MonoGlýph:
             self._plot(cx - y, cy - x, char, r, g, b)
 
 
-        plot_circle_points(cx, cy, x, y, char, r, g, b)
+        _]plot_circle_points(cx, cy, x, y, char, r, g, b)
         while y >= x:
             x += 1
             if d > 0:
@@ -159,7 +153,7 @@ class MonoGlýph:
                 d = d + 4 * (x - y) + 10
             else:
                 d = d + 4 * x + 6
-            plot_circle_points(cx, cy, x, y, char, r, g, b)
+            _plot_circle_points(cx, cy, x, y, char, r, g, b)
 
 
     def draw_text(self, x: int, y: int, text: str, r: int = None, g: int = None, b: int = None):
@@ -178,7 +172,7 @@ class MonoGlýph:
 
 
     def fill_rect(self, x: int, y: int, width: int, height: int, char: str, r: int = None, g: int = None, b: int = None):
-        """Fills a rectangle. Handles rotation by splitting into two triangles."""
+        """Fills rect. Handles rotation through triangles."""
         # Vertices: TopLeft, TopRight, BottomRight, BottomLeft
         x0, y0 = x, y
         x1, y1 = x + width - 1, y
@@ -206,7 +200,7 @@ class MonoGlýph:
         if y1 > y2: x1, y1, x2, y2 = x2, y2, x1, y1
 
 
-        def interpolate(y, y_start, y_end, x_start, x_end):
+        def _interp(y, y_start, y_end, x_start, x_end):
             if y_start == y_end:
                 return x_start
             return x_start + (x_end - x_start) * (y - y_start) / (y_end - y_start)
@@ -214,16 +208,16 @@ class MonoGlýph:
 
         # Draw flat-bottom part
         for y in range(int(y0), int(y1)):
-            sx = interpolate(y, y0, y2, x0, x2)
-            ex = interpolate(y, y0, y1, x0, x1)
+            sx = _interp(y, y0, y2, x0, x2)
+            ex = _interp(y, y0, y1, x0, x1)
             self._draw_horizontal_line(int(sx), int(ex), y, char, r, g, b)
 
 
         # Draw flat-top part
         for y in range(int(y1), int(y2) + 1):
 
-            sx = interpolate(y, y0, y2, x0, x2)
-            ex = interpolate(y, y1, y2, x1, x2)
+            sx = _interp(y, y0, y2, x0, x2)
+            ex = _interp(y, y1, y2, x1, x2)
             self._draw_horizontal_line(int(sx), int(ex), y, char, r, g, b)
  
  
@@ -252,14 +246,24 @@ class MonoGlýph:
         sys.stdout.write('\n'.join(''.join(row) for row in self.buffer) + '\n')
  
  
-    def render_delta(self, prev_buffer):
-        """Only changes characters that changed from prev frame"""
-        output = []
+    def render_delta(self, prev_buffer: list[list[str]] | None) -> None:
+        """Render only characters that changed from prev frame."""
+        if (
+            prev_buffer is None or
+            len(prev_buffer) != self.height or
+            any(len(row) != self.width for row in prev_buffer)
+        ):
+            # Fallback: full render
+            self.render()
+            return
+    
+        output: list[str] = []
         for y in range(self.height):
             for x in range(self.width):
                 char = self.buffer[y][x]
-                if prev_buffer is None or prev_buffer[y][x] != char:
-                    output.append(f'\033[{y+1};{x+1}H{char}')
-        if output:
-            sys.stdout.write(''.join(output))
-            sys.stdout.flush()
+                if prev_buffer[y][x] != char:
+                    output.append(f"\033[{y + 1};{x + 1}H{char}")
+
+    if output:
+        sys.stdout.write("".join(output))
+        sys.stdout.flush()
