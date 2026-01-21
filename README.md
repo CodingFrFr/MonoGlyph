@@ -6,7 +6,6 @@ MonoGlyph is a small Python library for drawing ASCII/ANSI graphics with shading
 
 ```bash
 git clone https://github.com/CodingFrFr/monoglyph
-cd pythia
 ```
 ## Usage
 ```python
