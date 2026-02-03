@@ -9,7 +9,7 @@ git clone https://github.com/CodingFrFr/monoglyph
 ```
 ## Usage
 ```python
-import monoglyph
+from .../monoglyph import MonoGlyph
 
 mg = MonoGlyph(width=80, height=24)
 mg.set_rotation(45, origin_x=40, origin_y=12)
