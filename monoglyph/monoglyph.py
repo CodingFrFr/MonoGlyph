@@ -53,6 +53,25 @@ class MonoGlyph:
             self.buffer[y][x] = char
 
 
+    def _plot_shade(self, x: int, y: int, intensity: float, r: int = None, g: int = None, b: int = None, char: str = None):
+        """Plot a coverage intensity using ASCII shading."""
+        if not (0 <= x < self.width and 0 <= y < self.height):
+            return
+
+        if intensity >= 1.0 and char is not None:
+            shade_char = char
+        else:
+            shade_char = self.get_shade(intensity)
+
+        if shade_char == self.default_char:
+            return
+
+        if r is not None and g is not None and b is not None:
+            shade_char = self.color_char(shade_char, r, g, b)
+
+        self.buffer[y][x] = shade_char
+
+
     def rotate_point(self, x: int, y: int):
         """Applies current rotation to a point2d."""
         if self.current_angle == 0:
@@ -106,6 +125,72 @@ class MonoGlyph:
             if e2 <= dx:
                 err += dx
                 start_y += sy
+
+
+    def draw_line_aa(self, x0: int, y0: int, x1: int, y1: int, char: str = None, r: int = None, g: int = None, b: int = None):
+        """Draw an antialiased line using Xiaolin Wu's algorithm."""
+        start_x, start_y = self.rotate_point(x0, y0)
+        end_x, end_y = self.rotate_point(x1, y1)
+
+        steep = abs(end_y - start_y) > abs(end_x - start_x)
+        if steep:
+            start_x, start_y = start_y, start_x
+            end_x, end_y = end_y, end_x
+
+        if start_x > end_x:
+            start_x, end_x = end_x, start_x
+            start_y, end_y = end_y, start_y
+
+        dx = end_x - start_x
+        dy = end_y - start_y
+        if dx == 0:
+            self.draw_line(start_x, start_y, end_x, end_y, char or self.SHADE_CHARS[-1], r, g, b)
+            return
+
+        gradient = dy / dx
+
+        def ipart(x):
+            return int(math.floor(x))
+
+        def round_x(x):
+            return int(math.floor(x + 0.5))
+
+        def fpart(x):
+            return x - math.floor(x)
+
+        def rfpart(x):
+            return 1 - fpart(x)
+
+        def plot(x, y, intensity):
+            if steep:
+                self._plot_shade(y, x, intensity, r, g, b, char)
+            else:
+                self._plot_shade(x, y, intensity, r, g, b, char)
+
+        # First endpoint
+        x_end = round_x(start_x)
+        y_end = start_y + gradient * (x_end - start_x)
+        x_gap = rfpart(start_x + 0.5)
+        x_pixel1 = x_end
+        y_pixel1 = ipart(y_end)
+        plot(x_pixel1, y_pixel1, rfpart(y_end) * x_gap)
+        plot(x_pixel1, y_pixel1 + 1, fpart(y_end) * x_gap)
+        intery = y_end + gradient
+
+        # Second endpoint
+        x_end = round_x(end_x)
+        y_end = end_y + gradient * (x_end - end_x)
+        x_gap = fpart(end_x + 0.5)
+        x_pixel2 = x_end
+        y_pixel2 = ipart(y_end)
+        plot(x_pixel2, y_pixel2, rfpart(y_end) * x_gap)
+        plot(x_pixel2, y_pixel2 + 1, fpart(y_end) * x_gap)
+
+        # Main loop
+        for x in range(x_pixel1 + 1, x_pixel2):
+            plot(x, ipart(intery), rfpart(intery))
+            plot(x, ipart(intery) + 1, fpart(intery))
+            intery += gradient
 
 
     def draw_rect(self, x: int, y: int, width: int, height: int, char: str, r: int = None, g: int = None, b: int = None):

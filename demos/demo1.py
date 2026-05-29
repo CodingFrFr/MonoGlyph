@@ -8,7 +8,34 @@ if lib_path not in sys.path:
     sys.path.append(lib_path)
 from monoglyph import MonoGlyph
 
+# Get key function
+if sys.platform == 'win32':
+    import msvcrt
+    def get_key():
+        if msvcrt.kbhit():
+            return msvcrt.getch().decode('utf-8').lower()
+        return None
+    
+    # Context manager dummy for Windows
+    class RawTerminal:
+        def __enter__(self): pass
+        def __exit__(self, *args): pass
 
+else:
+    import select, tty, termios
+    def get_key():
+        if select.select([sys.stdin], [], [], 0)[0]:
+            return sys.stdin.read(1)
+        return None
+
+    # Linux requires 'cbreak' for instant key reads
+    class RawTerminal:
+        def __enter__(self):
+            self.fd = sys.stdin.fileno()
+            self.old_settings = termios.tcgetattr(self.fd)
+            tty.setcbreak(self.fd)
+        def __exit__(self, *args):
+            termios.tcsetattr(self.fd, termios.TCSADRAIN, self.old_settings)
 
 
 class Cube:
@@ -44,7 +71,7 @@ class Cube:
 def main():
     angle = 0
     WIDTH, HEIGHT = 80, 40
-    renderer = MonoGlyph(WIDTH, HEIGHT, '#')
+    renderer = MonoGlyph(WIDTH, HEIGHT, '-')
     
     fps = 0
     prev_time = time.time()
@@ -69,17 +96,26 @@ def main():
     except KeyboardInterrupt:
         os.system('clear')
         print('You quit to early.')
-        return
+        pass
 
 
     try:
-        while True:
-                renderer.clear(renderer.color_char(renderer.get_shade(0.8), 0, 0, 0))
+        with RawTerminal():
+            while True:
+                renderer.clear(renderer.color_char(" ", 0, 0, 0))
                 
                 r = int(127 + 127 * math.sin(math.radians(angle)))
                 g = int(127 + 127 * math.sin(math.radians(angle + 120)))
                 b = int(127 + 127 * math.sin(math.radians(angle + 240)))
                 
+                # Handle Input (ugly style)
+                key = get_key()
+                if key == 'w': cam_z -= 2
+                if key == 's': cam_z += 2
+                if key == 'a': cam_x += 2
+                if key == 'd': cam_x -= 2
+                if key == 'q': cam_y += 2
+                if key == 'e': cam_y -= 2
 
                 # Rotate Cube
                 rotated_nodes = cube.rotate(angle_x, angle_y, angle_z)
@@ -110,12 +146,10 @@ def main():
                     x0, y0 = projected_points[p1]
                     x1, y1 = projected_points[p2]
 
-                    shade_z = 1 - (rel_z / 100) # To chose the 'shade' of the cube
-                    renderer.draw_line(x0, y0, x1, y1, renderer.get_shade(shade_z), r, g, b)
+                    renderer.draw_line(x0, y0, x1, y1, "#", r, g, b)
                 
                 # renderer.draw_text(0, 0, f"FPS: {fps:.2f}")
-                # Render
-                #renderer.render()
+                # renderer.render()
                 renderer.render_delta(prev_buffer)
                 prev_buffer = [row[:] for row in renderer.buffer]
                 
@@ -129,7 +163,7 @@ def main():
                 # Calculate the time elapsed since the last frame
                 time_elapsed = current_time - prev_time
                 
-                # Calculate FPS: 1 frame / time elapsed
+                # 1 frame / time elapsed
                 if time_elapsed > 0: # Avoid division by zero
                     fps = 1 / time_elapsed
                     

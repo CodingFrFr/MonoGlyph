@@ -9,10 +9,12 @@ git clone https://github.com/CodingFrFr/monoglyph
 ```
 ## Usage
 ```python
-from .../monoglyph import MonoGlyph
+from monoglyph import MonoGlyph
 
 mg = MonoGlyph(width=80, height=24)
 mg.set_rotation(45, origin_x=40, origin_y=12)
 
-# Stuff will be added to this
+# Draw a line with antialiasing
+mg.draw_line_aa(10, 5, 70, 18, "#")
+mg.render()
 ```
