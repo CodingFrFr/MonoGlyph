@@ -21,7 +21,7 @@ class MonoGlyph:
         | |  | | (_) | | | | (_) | |_| | | |_| | |_)|| | | |
         |_|  |_|\___/|_| |_|\___/ \____|_|\__, | .__/|_| |_|
                                           |___/|_|
-        """ # Logo is for demos/examples; not needed in actual uses
+        """
 
 
     def set_rotation(self, degrees: float, origin_x: int = 0, origin_y: int = 0):
@@ -145,7 +145,7 @@ class MonoGlyph:
             self._plot(cx - y, cy - x, char, r, g, b)
 
 
-        _]plot_circle_points(cx, cy, x, y, char, r, g, b)
+        _plot_circle_points(cx, cy, x, y, char, r, g, b)
         while y >= x:
             x += 1
             if d > 0:
@@ -246,24 +246,14 @@ class MonoGlyph:
         sys.stdout.write('\n'.join(''.join(row) for row in self.buffer) + '\n')
  
  
-    def render_delta(self, prev_buffer: list[list[str]] | None) -> None:
-        """Render only characters that changed from prev frame."""
-        if (
-            prev_buffer is None or
-            len(prev_buffer) != self.height or
-            any(len(row) != self.width for row in prev_buffer)
-        ):
-            # Fallback: full render
-            self.render()
-            return
-    
-        output: list[str] = []
+    def render_delta(self, prev_buffer):
+        """Only changes characters that changed from previous frame"""
+        output = []
         for y in range(self.height):
             for x in range(self.width):
                 char = self.buffer[y][x]
-                if prev_buffer[y][x] != char:
-                    output.append(f"\033[{y + 1};{x + 1}H{char}")
-
-    if output:
-        sys.stdout.write("".join(output))
-        sys.stdout.flush()
+                if prev_buffer is None or prev_buffer[y][x] != char:
+                    output.append(f'\033[{y+1};{x+1}H{char}')
+        if output:
+            sys.stdout.write(''.join(output))
+            sys.stdout.flush()

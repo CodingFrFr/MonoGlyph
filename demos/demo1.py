@@ -1,8 +1,13 @@
 import time
 import math
-import os
 import sys
+import os
+# Getting monoglyph from the parent directory (since it's not installed as a package)
+lib_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'monoglyph'))
+if lib_path not in sys.path:
+    sys.path.append(lib_path)
 from monoglyph import MonoGlyph
+
 
 
 
@@ -57,7 +62,7 @@ def main():
     sys.stdout.write("\033[?25l") # Hide Cursor
     os.system('cls' if os.name == 'nt' else 'clear')
     print(renderer.color_char(renderer.logo, 120, 255, 210))
-    print("Ctrl+C to Quit")
+    print("Controls: W/S (Zoom), A/D (Pan X), Q/E (Pan Y), Ctrl+C to Quit")
     
     try:
         time.sleep(3)
